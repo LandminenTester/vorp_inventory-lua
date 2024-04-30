@@ -2,7 +2,7 @@
 --------------------------------------- CONFIG -----------------------------------------------------
 -- VORP INVENTORY LUA*
 
-Lang = "English"
+Lang = "German"
 
 Config = {
 	--======================= DEVELOPMENT ==============================--
@@ -25,13 +25,12 @@ Config = {
 	DisableDeathInventory    = true, -- prevent the ability to access inventory while dead
 	--{ I } OPEN INVENTORY
 	OpenKey                  = 0xC1989F95,
-	UseFilter                = true, -- if true then will use the filter opening inventory
 	--RMB mouse PROMPT PICKUP
 	PickupKey                = 0xF84FA74F,
 	discordid                = true, -- turn to true if ur using discord whitelist
 	DeleteOnlyDontDrop       = false, -- if true then dropping items only deletes from inventory and box on the floor is not created
 	UseLanternPutOnBelt      = true, -- if true then lanterns will be put on belt
-
+	UseFilter                = true, -- if true then will use the filter opening inventory
 	-- =================== CLEAR ITEMS WEAPONS MONEY GOLD =====================--
 
 
@@ -65,18 +64,18 @@ Config = {
 
 	-- =================== DROP ON DEATH =====================--
 
-	DropOnRespawn       = {
+	DropOnRespawn   = {
 		AllMoney       = false,
-		PartMoney      = false,
+		PartMoney      = true,
 		PartPercentage = 25,
 		Gold           = false, -- TRUE ONLY IF UseGoldItem = true
-		Weapons        = false,
+		Weapons        = true,
 		Items          = false
 	},
 
 	-- HOW MANY WEAPONS ALLOWED PER PLAYER FOR ITEMS IS IN VORP CORE CONFIG
 	MaxItemsInInventory = {
-		Weapons = 6,
+		Weapons = 4,
 	},
 
 	-- HERE YOU CAN SET THE MAX AMOUNT OF WEAPONS PER JOB (IF YOU WANT)
@@ -86,12 +85,9 @@ Config = {
 
 	-- FIRST JOIN
 	startItems          = {
-		consumable_raspberrywater = 2, --ITEMS SAME NAME AS IN DATABASE
-		ammorevolvernormal = 1   --AMMO SAME NAME AS I NTHE DATABASE
 	},
 
 	startWeapons        = {
-		"WEAPON_MELEE_KNIFE" --WEAPON HASH NAME
 	},
 
 	-- items that dont get added up torwards your max weapon count
@@ -107,6 +103,10 @@ Config = {
 		"WEAPON_KIT_METAL_DETECTOR",
 		"WEAPON_MELEE_HAMMER",
 		"WEAPON_MELEE_KNIFE",
+		"WEAPON_BOW",
+		"WEAPON_BOW_IMPROVED",
+		"WEAPON_LASSO",
+		"WEAPON_LASSO_REINFORCED",
 	},
 	-- weapons that are considered non throwables
 	nonAmmoThrowables   = {
