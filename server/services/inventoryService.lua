@@ -650,7 +650,7 @@ function InventoryService.sharePickupServerWeapon(data)
 	local charname, scourceidentifier, steamname = getSourceInfo(_source)
 	local title = T.WebHookLang.dropedwep
 	if not desc or desc == "" then
-		desc = "Custom Description not set"
+		desc = "Keine Beschreibung gesetzt"
 	end
 	if not serialNumber or serialNumber == "" then
 		serialNumber = "Serial Number not set"
@@ -863,7 +863,7 @@ function InventoryService.giveWeapon2(player, weaponId, target)
 
 
 	if not serialNumber or serialNumber == "" then
-		serialNumber = "Serial Number not set"
+		serialNumber = "Keine Seriennummer gesetzt"
 	end
 	local title = T.WebHookLang.gavewep
 	local description = "**" .. T.WebHookLang.charname .. ":** `" .. charname2 .. "`\n**" .. T.WebHookLang.Steamname .. "** `" .. steamname2 .. "` \n**" .. T.WebHookLang.give .. "**  **" .. 1 .. "** \n**" .. T.WebHookLang.Weapontype .. ":** `" .. weaponName .. "` \n**" .. T.WebHookLang.Desc .. "** `" .. (desc or "") .. "`\n **" .. T.WebHookLang.serialnumber .. "** `" .. serialNumber .. "`\n **" .. T.to .. ":** ` " .. charname .. "` \n**" .. T.WebHookLang.Steamname .. "** ` " .. steamname .. "` "
@@ -1279,7 +1279,7 @@ function InventoryService.canStoreItem(identifier, charIdentifier, invId, name, 
 		local sourceInventoryItemCount = InventoryService.getInventoryTotalCount(identifier, charIdentifier, invId)
 		sourceInventoryItemCount = sourceInventoryItemCount + amount
 		if sourceInventoryItemCount > invData:getLimit() then
-			return false, "Inventory limit reached"
+			return false, "Das Lager ist bereits voll"
 		end
 	end
 
@@ -1294,14 +1294,14 @@ function InventoryService.canStoreItem(identifier, charIdentifier, invId, name, 
 			local totalAmount = amount + itemCount
 
 			if totalAmount > invData:getItemLimit(name) then
-				return false, "Item limit reached"
+				return false, "Limit erreicht"
 			end
 		elseif amount > invData:getItemLimit(name) then
-			return false, "Item limit reached"
+			return false, "Limit erreicht"
 		end
 		return true
 	elseif invData:iswhitelistItemsEnabled() then
-		return false, "Item not in whitelist"
+		return false, "Du darfst du Item nicht hineinlegen"
 	end
 
 	if not invData:getIgnoreItemStack() then
@@ -1310,7 +1310,7 @@ function InventoryService.canStoreItem(identifier, charIdentifier, invId, name, 
 			local totalCount = item:getCount() + amount
 
 			if totalCount > item:getLimit() then
-				return false, "Item limit reached"
+				return false, "Limit erreicht"
 			end
 		end
 	end
@@ -1451,17 +1451,17 @@ function InventoryService.MoveToCustom(obj)
 	end
 
 	if not IsBlackListed then
-		return Core.NotifyObjective(_source, "Item is blackListed", 5000)
+		return Core.NotifyObjective(_source, "Dieses Item darfst du nicht ins dieses Lager legen", 5000)
 	end
 
 	if not CanMove then
-		return Core.NotifyObjective(_source, "You dont have permision to move into the storage", 5000)
+		return Core.NotifyObjective(_source, "Du darfst nichts in das Lager legen", 5000)
 	end
 
 
 	if item.type == "item_weapon" then
 		if not CustomInventoryInfos[invId]:doesAcceptWeapons() then
-			return Core.NotifyRightTip(_source, "This storage does not accept weapons", 2000)
+			return Core.NotifyRightTip(_source, "Du darfst hier keine Waffen hineinlegen", 2000)
 		end
 
 		if not InventoryService.canStoreWeapon(sourceIdentifier, sourceCharIdentifier, invId, item.name, amount) then
@@ -1477,7 +1477,7 @@ function InventoryService.MoveToCustom(obj)
 		TriggerClientEvent("vorpCoreClient:subWeapon", _source, item.id)
 		InventoryService.reloadInventory(_source, invId)
 		InventoryService.DiscordLogs(invId, item.name, amount, sourceName, "Move")
-		local text = "you have moved to storage"
+		local text = " legst du ins Lager "
 
 		if string.lower(item.name) == "weapon_revolver_lemat" then
 			Icon = "weapon_revolver_doubleaction" -- theres no revolver lemat texture
@@ -1501,7 +1501,7 @@ function InventoryService.MoveToCustom(obj)
 
 			InventoryService.subItem(_source, "default", item.id, amount)
 			TriggerClientEvent("vorpInventory:removeItem", _source, item.name, item.id, amount)
-			Core.NotifyRightTip(_source, "you have Moved " .. amount .. " " .. item.label .. " to storage", 2000)
+			Core.NotifyRightTip(_source, "du legst " .. amount .. " " .. item.label .. " ins Lager", 2000)
 			InventoryService.reloadInventory(_source, invId)
 			InventoryService.DiscordLogs(invId, item.name, amount, sourceName, "Move")
 		end)
@@ -1523,7 +1523,7 @@ function InventoryService.TakeFromCustom(obj)
 	local Table = CustomInventoryInfos[invId]:getPermissionTakeFrom()
 	local CanMove = InventoryService.DoesHavePermission(invId, job, grade, Table)
 	if not CanMove then
-		return Core.NotifyObjective(_source, "you dont have permmissions to take from this storage", 5000) -- add your own notifications
+		return Core.NotifyObjective(_source, "Du darfst nichts aus diesem Lager nehmen", 5000) -- add your own notifications
 	end
 
 	if item.type == "item_weapon" then
@@ -1552,7 +1552,7 @@ function InventoryService.TakeFromCustom(obj)
 		TriggerClientEvent("vorpInventory:receiveWeapon", _source, item.id, sourceIdentifier, name, ammo, label, serial, custom, _source, customDesc, weight)
 		InventoryService.reloadInventory(_source, invId)
 		InventoryService.DiscordLogs(invId, item.name, amount, sourceName, "Take")
-		local text = " you have Taken From storage "
+		local text = " aus dem Lager genommen "
 
 		if string.lower(item.name) == "weapon_revolver_lemat" then
 			Icon = "weapon_revolver_doubleaction" -- theres no revolver lemat texture
@@ -1570,7 +1570,7 @@ function InventoryService.TakeFromCustom(obj)
 		local invHasSpace = InventoryAPI.canCarryAmountItem(_source, itemTotalWeight)
 
 		if not canCarryItem then
-			return Core.NotifyRightTip(_source, "Cant carry more of this item stack limit achieved", 2000)
+			return Core.NotifyRightTip(_source, "Du hast das Limit erreicht", 2000)
 		end
 
 		if not invHasSpace then
@@ -1590,7 +1590,7 @@ function InventoryService.TakeFromCustom(obj)
 			TriggerClientEvent("vorpInventory:receiveItem", _source, item.name, itemAdded:getId(), amount, itemAdded:getMetadata())
 			InventoryService.reloadInventory(_source, invId)
 			InventoryService.DiscordLogs(invId, item.name, amount, sourceName, "Take")
-			Core.NotifyRightTip(_source, "you have Taken " .. amount .. " " .. item.label .. " from storage ", 2000)
+			Core.NotifyRightTip(_source, "Du hast " .. amount .. "x " .. item.label .. " aus dem Lager genommen", 2000)
 		end)
 	end
 end
@@ -1632,9 +1632,9 @@ function InventoryService.MoveToPlayer(obj)
 	local invId = "default"
 	local target = data.info.target
 	local messages = {
-		weapons = "You cannot give this amount of weapons to this player. Limit exceeded.",
-		items = "You cannot give this amount of items to this player. Limit exceeded.",
-		cooldown = "In cooldown, Player cant accept more "
+		weapons = "Der Spieler hat bereits zuviele Waffen dabei.",
+		items = "Der Rucksack vom Spieler ist bereits voll.",
+		cooldown = "Bitte warte etwas, der Spieler ist gerade überlastet"
 	}
 	local IsBlackListed = PlayerBlackListedItems[string.lower(item.name)]
 
@@ -1657,7 +1657,7 @@ function InventoryService.MoveToPlayer(obj)
 					end
 				end)
 			else
-				return Core.NotifyObjective(_source, "Can't cary more weapons", 2000)
+				return Core.NotifyObjective(_source, "Du kannst nicht mehr Waffen tragen", 2000)
 			end
 		end, item.name)
 	else
@@ -1672,11 +1672,11 @@ function InventoryService.MoveToPlayer(obj)
 
 		res = InventoryAPI.canCarryItem(target, item.name, amount)
 		if not res then
-			return Core.NotifyObjective(_source, "Cant carry more of this item", 2000)
+			return Core.NotifyObjective(_source, "Du kannst nicht mehr von diesen Items tragen", 2000)
 		end
 
 		if amount > item.count then
-			return Core.NotifyObjective(_source, " dont have that amount of items", 2000)
+			return Core.NotifyObjective(_source, " Du hast nicht genug Items", 2000)
 		end
 
 		InventoryAPI.addItem(target, item.name, amount, item.metadata, function(res)
@@ -1686,8 +1686,8 @@ function InventoryService.MoveToPlayer(obj)
 						SetTimeout(400, function()
 							InventoryService.reloadInventory(target, "default", "player", _source)
 							InventoryService.DiscordLogs(invId, item.name, amount, sourceName, "Move")
-							Core.NotifyRightTip(_source, "you have Moved" .. amount .. " " .. item.label .. " to player", 2000)
-							Core.NotifyRightTip(target, "Item" .. item.label .. " was given to you", 2000)
+							Core.NotifyRightTip(_source, "du gibst" .. amount .. " " .. item.label .. " dem Spieler", 2000)
+							Core.NotifyRightTip(target, "Gegenstand" .. item.label .. " wurde dir gegeben", 2000)
 						end)
 					end
 				end)
@@ -1707,9 +1707,9 @@ function InventoryService.TakeFromPlayer(obj)
 	local target = data.info.target -- needs to remove from this target the items that are taken to source
 	local IsBlackListed = PlayerBlackListedItems[string.lower(item.name)]
 	local messages = {
-		weapons = "You cannot remove this amount of weapons from this player. Limit exceeded.",
-		items = "You cannot remove this amount of items from this player. Limit exceeded.",
-		cooldown = "In cooldown, Player cant accept more "
+		weapons = "Du hast bereits zuviele Waffen dabei.",
+		items = "Der Rucksack von dir ist bereits voll.",
+		cooldown = "Bitte warte etwas, der Spieler ist gerade überlastet"
 	}
 
 	if IsBlackListed then
@@ -1731,7 +1731,7 @@ function InventoryService.TakeFromPlayer(obj)
 					end
 				end)
 			else
-				Core.NotifyObjective(_source, "You Can't cary more weapons", 2000)
+				Core.NotifyObjective(_source, "Du kannst nicht mehr Waffen tragen", 2000)
 			end
 		end, item.name)
 	else
@@ -1755,8 +1755,8 @@ function InventoryService.TakeFromPlayer(obj)
 					if result then
 						InventoryService.reloadInventory(target, "default", "player", source)
 						InventoryService.DiscordLogs(invId, item.name, amount, sourceName, "Take")
-						Core.NotifyRightTip(_source, "you have Taken " .. amount .. " " .. item.label .. " from player", 2000)
-						Core.NotifyRightTip(target, "Item" .. item.label .. " was taken from you", 2000)
+						Core.NotifyRightTip(_source, "Du nimmst " .. amount .. " " .. item.label .. " vom Spieler", 2000)
+						Core.NotifyRightTip(target, "Das Item " .. item.label .. " wurde dir entfernt", 2000)
 					end
 				end)
 			end

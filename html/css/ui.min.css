@@ -646,14 +646,14 @@ input#secondarysearch:-ms-input-placeholder {
     margin: 3px;
     width: 5.5vw;
     height: 8.5vh;
-    background-color: rgba(26, 25, 25, 1);
+    background-color: rgba(26, 25, 25, 0.35);
     border: 1px solid transparent;
 }
 
 .item.active,
 .item:hover {
     background-color: rgba(26, 25, 25, 0.003);
-    border: 1px solid red;
+    border: 1px solid rgb(241, 143, 5);
     z-index: 100;
 
 }
