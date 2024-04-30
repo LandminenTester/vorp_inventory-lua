@@ -111,7 +111,9 @@ function SvUtils.FindItemByNameAndMetadata(invId, identifier, name, metadata)
 
     if metadata then
         for _, item in pairs(userInventory) do
-            if name == item:getName() and SharedUtils.Table_equals(metadata, item:getMetadata()) then
+            if name == "notebook" and name == item:getName() and metadata.description == item:getMetadata().description then
+                return item
+            elseif name == item:getName() and SharedUtils.Table_equals(metadata, item:getMetadata()) then
                 return item
             end
         end

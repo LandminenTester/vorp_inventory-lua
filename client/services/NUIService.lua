@@ -490,6 +490,66 @@ function NUIService.NUIGiveItem(obj)
 	end
 end
 
+function NUIService.NUIGiveItem(obj)
+    if cangive then
+        --local nearestPlayers = Utils.getNearestPlayers()
+        local PlayerSelector = nil
+        TriggerEvent("mega_nplayerselector:load", function(ps)
+        PlayerSelector = ps
+        end)
+
+        local data2 = Utils.expandoProcessing(obj)
+
+        NUIService.CloseInv()
+
+        PlayerSelector:setRange(4)
+        PlayerSelector:activate()
+        PlayerSelector:onPlayerSelected(function(data)
+
+            local itemId = data2.id
+            local target = tonumber(data.id)
+
+			if data2.type == "item_money" then
+				if isProcessingPay then return end
+				isProcessingPay = true
+				TriggerServerEvent("vorpinventory:giveMoneyToPlayer", target, tonumber(data2.count))
+			elseif Config.UseGoldItem and data2.type == "item_gold" then
+				if isProcessingPay then return end
+				isProcessingPay = true
+				TriggerServerEvent("vorpinventory:giveGoldToPlayer", target, tonumber(data2.count))
+			elseif data2.type == "item_ammo" then
+				if isProcessingPay then return end
+				isProcessingPay = true
+				local amount = tonumber(data2.count)
+				local ammotype = data2.item
+				local maxcount = SharedData.MaxAmmo[ammotype]
+				if amount > 0 and maxcount >= amount then
+					TriggerServerEvent("vorpinventory:servergiveammo", ammotype, amount, target, maxcount)
+				end
+			elseif data2.type == "item_standard" then
+				local amount = tonumber(data2.count)
+				local item = UserInventory[itemId]
+
+				if amount > 0 and item ~= nil and item:getCount() >= amount then
+					local itemName = item:getName()
+
+					TriggerServerEvent("vorpinventory:serverGiveItem", itemId, amount, target)
+				end
+			else
+				TriggerServerEvent("vorpinventory:serverGiveWeapon", tonumber(itemId), target)
+			end
+
+			PlayerSelector:deactivate()
+			Wait(100)
+			SetNuiFocus(false, false)
+			
+        end)
+    else
+        TriggerEvent('vorp:TipRight', T.cantgivehere, 5000)
+    end
+end
+
+
 function NUIService.NUIDropItem(obj)
 	if candrop then
 		local aux = Utils.expandoProcessing(obj)

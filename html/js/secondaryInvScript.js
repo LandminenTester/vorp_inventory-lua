@@ -328,7 +328,7 @@ function secondInventorySetup(items, info) {
             const weight = item.weight ? "Weight   " + (item.weight * item.count) + " Kg" : "Weight " + item.count / 4 + " Kg";
             $("#secondInventoryElement").append(`
             <div data-label='${item.label}' data-group ='${group}'
-            style='background-image: url("img/items/${item.name.toLowerCase()}.png"); background-size: 4.5vw 7.7vh; background-repeat: no-repeat; background-position: center;' id='item-${index}' class='item' data-tooltip="${weight + info}">
+            style='background-image: url("img/items/${item.name.toLowerCase()}.png"); background-size: 5vw 7.7vh; background-repeat: no-repeat; background-position: center;' id='item-${index}' class='item' data-tooltip="${weight + info}">
             </div>`);
         }
 

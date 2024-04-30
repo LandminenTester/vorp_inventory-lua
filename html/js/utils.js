@@ -248,7 +248,7 @@ function giveGetHowMany(item, type, hash, id, metadata) {
                     return;
                 }
                 $.post(
-                    `https://${GetParentResourceName()}/GetNearPlayers`,
+                    `https://${GetParentResourceName()}/GiveItem`,
                     JSON.stringify({
                         type: type,
                         what: "give",
@@ -263,7 +263,7 @@ function giveGetHowMany(item, type, hash, id, metadata) {
         });
     } else {
         $.post(
-            `https://${GetParentResourceName()}/GetNearPlayers`,
+            `https://${GetParentResourceName()}/GiveItem`,
             JSON.stringify({
                 type: type,
                 what: "give",
@@ -292,7 +292,7 @@ function giveGetHowManyMoney() {
                 return;
             }
             $.post(
-                `https://${GetParentResourceName()}/GetNearPlayers`,
+                `https://${GetParentResourceName()}/GiveItem`,
                 JSON.stringify({
                     type: type,
                     what: "give",
@@ -325,7 +325,7 @@ function giveammotoplayer(ammotype) {
                 return;
             }
             $.post(
-                `https://${GetParentResourceName()}/GetNearPlayers`,
+                `https://${GetParentResourceName()}/GiveItem`,
                 JSON.stringify({
                     type: type,
                     what: "give",
@@ -355,7 +355,7 @@ function giveGetHowManyGold() {
                 return;
             }
             $.post(
-                `https://${GetParentResourceName()}/GetNearPlayers`,
+                `https://${GetParentResourceName()}/GiveItem`,
                 JSON.stringify({
                     type: type,
                     what: "give",

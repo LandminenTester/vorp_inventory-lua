@@ -408,19 +408,19 @@ function inventorySetup(items) {
                 },
             });
 
-            data.push({
-                text: LANGUAGE.drop,
-                action: function () {
-                    dropGetHowMany(
-                        item.name,
-                        item.type,
-                        item.hash,
-                        item.id,
-                        item.metadata,
-                        item.count
-                    );
-                },
-            });
+            // data.push({
+            //     text: LANGUAGE.drop,
+            //     action: function () {
+            //         dropGetHowMany(
+            //             item.name,
+            //             item.type,
+            //             item.hash,
+            //             item.id,
+            //             item.metadata,
+            //             item.count
+            //         );
+            //     },
+            // });
         }
         if (data.length > 0) {
             $("#item-" + index).contextMenu([data], {
