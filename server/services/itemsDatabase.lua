@@ -1,10 +1,10 @@
----@type table<string, Item> contains Database Server items
-ServerItems = {}
----@type table<string, table<number, Weapon>> contain users weapons
+local Core   = exports.vorp_core:GetCore()
+ServerItems  = {}
 UsersWeapons = { default = {} }
 
+-- temporary just to assing serial numbers to old weapons and labels will be removed eventually
 MySQL.ready(function()
-	DBService.queryAsync('SELECT * FROM loadout', {},
+	DBService.queryAsync('SELECT name,id,label,serial_number FROM loadout', {},
 		function(result)
 			if next(result) then
 				for _, db_weapon in pairs(result) do
@@ -20,7 +20,6 @@ MySQL.ready(function()
 			end
 		end)
 end)
-
 
 
 --- load all player weapons

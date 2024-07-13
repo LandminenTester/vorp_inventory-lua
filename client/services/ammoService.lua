@@ -1,7 +1,6 @@
-local getammoinfo = false
-local playerammoinfo = {}
+local playerammoinfo   = {}
 local updatedAmmoCache = {}
-
+local Core             = exports.vorp_core:GetCore()
 
 local function addAmmoToPed(ammoData)
     for ammoType, ammo in pairs(ammoData) do
@@ -10,10 +9,6 @@ local function addAmmoToPed(ammoData)
 end
 
 local function contains(arr, element)
-    if next(arr) == nil then
-        return false
-    end
-
     for key, v in pairs(arr) do
         if key == element then
             return true
@@ -22,19 +17,22 @@ local function contains(arr, element)
     return false
 end
 
-RegisterNetEvent("vorpinventory:loaded")
-AddEventHandler("vorpinventory:loaded", function()
+
+RegisterNetEvent("vorpinventory:recammo", function(ammoData)
+    playerammoinfo.ammo = ammoData.ammo
+end)
+
+RegisterNetEvent("vorpinventory:loaded", function()
     SendNUIMessage({
         action = "reclabels",
         labels = SharedData.AmmoLabels
     })
-    --TODO add callback here
-    getammoinfo = true
-    TriggerServerEvent("vorpinventory:getammoinfo")
-    while getammoinfo do
-        Wait(100)
-    end
 
+    local result = Core.Callback.TriggerAwait("vorpinventory:getammoinfo")
+    if not result then
+        return
+    end
+    playerammoinfo = result or {}
     addAmmoToPed(playerammoinfo.ammo)
     SendNUIMessage({
         action = "updateammo",
@@ -52,8 +50,8 @@ end)
 
 RegisterNetEvent("vorpinventory:setammotoped", function(ammoData)
     local PlayerPedId = PlayerPedId()
-    Citizen.InvokeNative(0xF25DF915FA38C5F3, PlayerPedId, 1, 1)
-    Citizen.InvokeNative(0x1B83C0DEEBCBB214, PlayerPedId)
+    RemoveAllPedWeapons(PlayerPedId, true, true)
+    RemoveAllPedAmmo(PlayerPedId)
     addAmmoToPed(ammoData)
 end)
 
@@ -61,41 +59,40 @@ RegisterNetEvent("vorpinventory:updateinventory", function() -- new
     NUIService.LoadInv()
 end)
 
-RegisterNetEvent("vorpinventory:recammo", function(ammo)
-    playerammoinfo = ammo
-    getammoinfo = false
-end)
-
 -- AMMO SAVING THREAD
 Citizen.CreateThread(function()
-    repeat Wait(1000) until LocalPlayer.state.IsInSession
+    repeat Wait(2000) until LocalPlayer.state.IsInSession
 
     while true do
         local sleep = 1000
         if not InInventory then
             local PlayerPedId = PlayerPedId()
-            local isArmed = Citizen.InvokeNative(0xCB690F680A3EA971, PlayerPedId, 4)
-            local wephash = Citizen.InvokeNative(0x8425C5F057012DAB, PlayerPedId)
-            local ismelee = Citizen.InvokeNative(0x959383DCD42040DA, wephash)
+            local isArmed = IsPedArmed(PlayerPedId, 4) == 1
+            local wephash = GetPedCurrentHeldWeapon(PlayerPedId)
+            local ismelee = IsWeaponMeleeWeapon(wephash) == 1
+
             if (isArmed or GetWeapontypeGroup(wephash) == 1548507267) and not ismelee then
                 local wepgroup = GetWeapontypeGroup(wephash)
-                local ammotypes = SharedData.AmmoTypes[wepgroup]
+                local ammotypes = SharedData.AmmoTypes[wepgroup] or {}
 
-                if ammotypes and playerammoinfo.ammo then
+                if playerammoinfo.ammo then
                     for k, v in pairs(ammotypes) do
-                        if contains(playerammoinfo.ammo, v) then
-                            local ammoQty = Citizen.InvokeNative(0x39D22031557946C1, PlayerPedId, joaat(v)) --GET_PED_AMMO_BY_TYPE
-                            if not ammoQty or ((GetWeapontypeGroup(wephash) == 1548507267 or GetWeapontypeGroup(wephash) == -1241684019) and ammoQty == 1) then
+                        if v and contains(playerammoinfo.ammo, v) then
+                            local ammoQty = GetPedAmmoByType(PlayerPedId, joaat(v))
+                            if (GetWeapontypeGroup(wephash) == 1548507267 or GetWeapontypeGroup(wephash) == -1241684019) and ammoQty == 1 then
                                 ammoQty = 0
                             end
 
                             if playerammoinfo.ammo[v] ~= ammoQty then
+                                --print("Ammo changed from " .. playerammoinfo.ammo[v] .. " to " .. ammoQty .. " for " .. v .. " ammo type.")
                                 updatedAmmoCache[v] = ammoQty
                                 playerammoinfo.ammo[v] = ammoQty
+                                --print("Ammo is now " .. playerammoinfo.ammo[v] .. " for " .. v .. " ammo type.")
                             end
                         end
                     end
-                    if next(updatedAmmoCache) ~= nil then
+
+                    if next(updatedAmmoCache) then
                         SendNUIMessage({ action = "updateammo", ammo = playerammoinfo.ammo })
                     end
                 end
@@ -108,11 +105,12 @@ end)
 local ammoupdate = true
 RegisterNetEvent("vorpinventory:ammoUpdateToggle", function(state)
     if not ammoupdate and state then
-        getammoinfo = true
-        TriggerServerEvent("vorpinventory:getammoinfo")
-        while getammoinfo do
-            Wait(100)
+        local result = Core.Callback.TriggerAwait("vorpinventory:getammoinfo")
+
+        if not result then
+            return
         end
+        playerammoinfo = result or {}
         addAmmoToPed(playerammoinfo.ammo)
         SendNUIMessage({
             action = "updateammo",
@@ -124,10 +122,11 @@ end)
 
 -- AMMO UPDATE THREAD
 Citizen.CreateThread(function()
-    repeat Wait(1000) until LocalPlayer.state.IsInSession
+    repeat Wait(2000) until LocalPlayer.state.IsInSession
     while true do
         if ammoupdate then
             if next(updatedAmmoCache) ~= nil then
+                -- print("updatedAmmoCache", json.encode(updatedAmmoCache))
                 TriggerServerEvent("vorpinventory:updateammo", playerammoinfo)
                 updatedAmmoCache = {}
             end
