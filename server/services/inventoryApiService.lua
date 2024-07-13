@@ -1403,7 +1403,7 @@ end
 
 exports("registerInventory", InventoryAPI.registerInventory)
 
-local function canContinue(id, jobName, grade, charid)
+local function canContinue(id)
 	if not CustomInventoryInfos[id] then
 		return false
 	end
@@ -1412,9 +1412,9 @@ local function canContinue(id, jobName, grade, charid)
         return false
     end
 
-	if not jobName and not grade and not charid then
-		return false
-	end
+	-- if not jobName and not grade and not charid then
+	-- 	return false
+	-- end
 
 	return true
 end

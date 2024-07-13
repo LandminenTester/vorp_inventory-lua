@@ -59,29 +59,45 @@ function PostAction(eventName, itemData, id, propertyName, info) {
 }
 const ActionTakeList = {
     custom: { action: "TakeFromCustom", id: () => customId, customtype: "id" },
-    player: { action: "TakeFromPlayer", id: () => playerId, customtype: "player" },
     cart: { action: "TakeFromCart", id: () => wagonid, customtype: "wagon" },
     house: { action: "TakeFromHouse", id: () => houseId, customtype: "house" },
-    hideout: { action: "TakeFromHideout", id: () => hideoutId, customtype: "hideout" },
+    stash: { action: "TakeFromStash", id: () => stashid, customtype: "stash" },
+    hideout: {
+      action: "TakeFromHideout",
+      id: () => hideoutId,
+      customtype: "hideout",
+    },
     bank: { action: "TakeFromBank", id: () => bankId, customtype: "bank" },
     clan: { action: "TakeFromClan", id: () => clanid, customtype: "clan" },
     steal: { action: "TakeFromsteal", id: () => stealid, customtype: "steal" },
-    Container: { action: "TakeFromContainer", id: () => Containerid, customtype: "Container" },
+    Container: {
+      action: "TakeFromContainer",
+      id: () => Containerid,
+      customtype: "Container",
+    },
     horse: { action: "TakeFromHorse", id: () => horseid, customtype: "horse" },
-};
+  };
 
-const ActionMoveList = {
+  const ActionMoveList = {
     custom: { action: "MoveToCustom", id: () => customId, customtype: "id" },
-    player: { action: "MoveToPlayer", id: () => playerId, customtype: "player" },
     cart: { action: "MoveToCart", id: () => wagonid, customtype: "wagon" },
     house: { action: "MoveToHouse", id: () => houseId, customtype: "house" },
-    hideout: { action: "MoveToHideout", id: () => hideoutId, customtype: "hideout" },
+    stash: { action: "MoveToStash", id: () => stashid, customtype: "stash" },
+    hideout: {
+      action: "MoveToHideout",
+      id: () => hideoutId,
+      customtype: "hideout",
+    },
     bank: { action: "MoveToBank", id: () => bankId, customtype: "bank" },
     clan: { action: "MoveToClan", id: () => clanid, customtype: "clan" },
     steal: { action: "MoveTosteal", id: () => stealid, customtype: "steal" },
-    Container: { action: "MoveToContainer", id: () => Containerid, customtype: "Container" },
+    Container: {
+      action: "MoveToContainer",
+      id: () => Containerid,
+      customtype: "Container",
+    },
     horse: { action: "MoveToHorse", id: () => horseid, customtype: "horse" },
-};
+  };
 
 
 function takeFromStoreWithPrice(itemData, qty) {

@@ -24,4 +24,5 @@ let objToGive = {};
 let geninfo;
 let StoreId;
 let LuaConfig = {};
+let stashid = 0;
 // Define the ID object

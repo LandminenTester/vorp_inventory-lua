@@ -143,6 +143,11 @@ window.addEventListener('message', function (event) {
             initiateSecondaryInventory(event.data.title, event.data.capacity)
         }
 
+        if (event.data.type == "stash") {
+            stashid = event.data.stashid;
+            initiateSecondaryInventory(stashid, event.data.title, event.data.capacity)
+        }
+
         if (event.data.type == "custom") {
             customId = event.data.id;
             initiateSecondaryInventory(event.data.title, event.data.capacity, event.data.weight)

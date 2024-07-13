@@ -6,6 +6,7 @@ local CanOpen             = true
 local InventoryIsDisabled = false
 local T                   = TranslationInv.Langs[Lang]
 local Core                = exports.vorp_core:GetCore()
+local fixitfyStash = false    -- ADD TO LINE 10
 
 StoreSynMenu              = false
 GenSynInfo                = {}
@@ -120,34 +121,64 @@ function NUIService.NUITakeFromPlayer(obj)
 	TriggerServerEvent("vorp_inventory:TakeFromPlayer", json.encode(obj))
 end
 
-function NUIService.CloseInv()
-	if Config.UseFilter then
-		AnimpostfxStop("OJDominoBlur")
-	end
-	if StoreSynMenu then
-		StoreSynMenu = false
-		GenSynInfo = {}
-		for _, item in pairs(UserInventory) do
-			if item.metadata ~= nil and item.metadata.description ~= nil and (item.metadata.orgdescription ~= nil or item.metadata.orgdescription == "") then
-				if item.metadata.orgdescription == "" then
-					item.metadata.description = nil
-				else
-					item.metadata.description = item.metadata.orgdescription
-				end
-				item.metadata.orgdescription = nil
-			end
-		end
-	end
+NUIService.CloseInventory = function()
+    if storemenu then
+        storemenu = false
+        geninfo = {}
+        for _, item in pairs(UserInventory) do
+            if item.metadata ~= nil and item.metadata.description ~= nil and
+                (item.metadata.orgdescription ~= nil or item.metadata.orgdescription == "") then
+                if item.metadata.orgdescription == "" then
+                    item.metadata.description = nil
+                else
+                    item.metadata.description = item.metadata.orgdescription
+                end
+                item.metadata.orgdescription = nil
+            end
+        end
+    end
+    if fixitfyStash then
+        TriggerServerEvent('fx-stash:closeStash',fixitfyStash)
+        fixitfyStash = false
+    end
+    if not CanOpen then -- only trigger if somone is inside custom inv
+        TriggerServerEvent("vorp_inventory:Server:UnlockCustomInv")
+    end
+    SetNuiFocus(false, false)
+    SendNUIMessage({ action = "hide" })
+    InInventory = false
+    TriggerEvent("vorp_stables:setClosedInv", false)
+    TriggerEvent("syn:closeinv")
+end
 
-	if not CanOpen then -- only trigger if somone is in inv
-		TriggerServerEvent("vorp_inventory:Server:UnlockCustomInv")
-	end
-	DisplayRadar(true)
-	SetNuiFocus(false, false)
-	SendNUIMessage({ action = "hide" })
-	InInventory = false
-	TriggerEvent("vorp_stables:setClosedInv", false)
-	TriggerEvent("syn:closeinv")
+NUIService.CloseInv = function()
+    if storemenu then
+        storemenu = false
+        geninfo = {}
+        for _, item in pairs(UserInventory) do
+            if item.metadata ~= nil and item.metadata.description ~= nil and
+                (item.metadata.orgdescription ~= nil or item.metadata.orgdescription == "") then
+                if item.metadata.orgdescription == "" then
+                    item.metadata.description = nil
+                else
+                    item.metadata.description = item.metadata.orgdescription
+                end
+                item.metadata.orgdescription = nil
+            end
+        end
+    end
+    if fixitfyStash then
+        TriggerServerEvent('fx-stash:closeStash',fixitfyStash)
+        fixitfyStash = false
+    end
+    if not CanOpen then -- only trigger if somone is inside
+        TriggerServerEvent("vorp_inventory:Server:UnlockCustomInv")
+    end
+    SetNuiFocus(false, false)
+    SendNUIMessage({ action = "hide" })
+    InInventory = false
+    TriggerEvent("vorp_stables:setClosedInv", false)
+    TriggerEvent("syn:closeinv")
 end
 
 function NUIService.setProcessingPayFalse()
@@ -311,6 +342,30 @@ function NUIService.NUIGiveItem(obj)
         TriggerEvent('vorp:TipRight', T.cantgivehere, 5000)
     end
 end
+
+------------------------ FİXİTFY ------------------------
+NUIService.OpenStashInventory = function(stashname, stashid, capacity)
+	fixitfyStash = stashname
+	SetNuiFocus(true, true)
+	SendNUIMessage({
+		action = "display",
+		type = "stash",
+		title = stashname,
+		stashid = stashid,
+		capacity = capacity,
+		search = Config.InventorySearchable
+	})
+	InInventory = true
+end
+
+NUIService.NUIMoveToStash = function(obj)
+	TriggerServerEvent("fx-stash:MoveToStash", json.encode(obj))
+end
+
+NUIService.NUITakeFromStash = function(obj)
+	TriggerServerEvent("fx-stash:TakeFromStash", json.encode(obj))
+end
+------------------------------------------------------------
 
 
 function NUIService.NUIDropItem(obj)

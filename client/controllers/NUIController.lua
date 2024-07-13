@@ -103,3 +103,11 @@ RegisterNetEvent("vorp_inventory:ReloadContainerInventory")
 AddEventHandler("vorp_inventory:ReloadContainerInventory", NUIService.ReloadInventory)
 RegisterNUICallback("TakeFromContainer", NUIService.NUITakeFromContainer);
 RegisterNUICallback("MoveToContainer", NUIService.NUIMoveToContainer);
+
+-- Fixitfy Stash Module
+RegisterNetEvent("fx-stash:OpenStashInventory")
+AddEventHandler("fx-stash:OpenStashInventory", NUIService.OpenStashInventory)
+RegisterNetEvent("fx-stash:ReloadStashInventory")
+AddEventHandler("fx-stash:ReloadStashInventory", NUIService.ReloadInventory)
+RegisterNUICallback('TakeFromStash', NUIService.NUITakeFromStash)
+RegisterNUICallback('MoveToStash', NUIService.NUIMoveToStash)
