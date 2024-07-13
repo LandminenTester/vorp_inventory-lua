@@ -28,7 +28,7 @@ Config = {
 	--RMB mouse PROMPT PICKUP
 	PickupKey                = 0xF84FA74F,
 	discordid                = true, -- turn to true if ur using discord whitelist
-	DeleteOnlyDontDrop       = false, -- if true then dropping items only deletes from inventory and box on the floor is not created
+	DeleteOnlyDontDrop       = true, -- if true then dropping items only deletes from inventory and box on the floor is not created
 	UseLanternPutOnBelt      = true, -- if true then lanterns will be put on belt
 	WeightMeasure            = "kg", -- Weight measure (kg, lbs, etc)
 	-- =================== CLEAR ITEMS WEAPONS MONEY GOLD =====================--
@@ -37,28 +37,28 @@ Config = {
 	UseClearAll         = false, -- if you want to use the clear item function if false will use DropOnDeath function
 	OnPlayerRespawn     = {
 		Money = {
-			JobLock         = { "police", "doctor" },
-			ClearMoney      = true, -- if true then removes all money from player
-			MoneyPercentage = false, -- if false wont use percentage if you add number   0.1 = 10% of money user have instead of all
+			JobLock         = {},
+			ClearMoney      = false, -- if true then removes all money from player
+			MoneyPercentage = 0.25, -- if false wont use percentage if you add number   0.1 = 10% of money user have instead of all
 		},
 		Items = {
-			JobLock       = { "police", "doctor" },
-			itemWhiteList = { "consumable_raspberrywater", "ammorevolvernormal" }, -- if you dont want an item a user could have to be deleted
-			AllItems      = true,                                         -- if true then removes all items from player
+			JobLock       = {},
+			itemWhiteList = {}, -- if you dont want an item a user could have to be deleted
+			AllItems      = false,                                         -- if true then removes all items from player
 		},
 		Weapons = {
-			JobLock           = { "police", "doctor" },
+			JobLock           = {},
 			WeaponWhitelisted = { "WEAPON_MELEE_KNIFE", "WEAPON_BOW" }, -- if you dont want a weapon a user could have to be deleted
 			AllWeapons        = true,                          -- if true then removes all weapons from player
 		},
 		Ammo = {
-			JobLock = { "police", "doctor" },
+			JobLock = {},
 			AllAmmo = true, -- if true then removes all ammo from player
 		},
 		Gold = {
-			JobLock        = { "police", "doctor" },
+			JobLock        = {},
 			ClearGold      = false, -- if false wont remove any Gold
-			GoldPercentage = false, -- if true and above false then it uses apercentage  0.1 = 10% of Gold user have instead of all
+			GoldPercentage = 0.25, -- if true and above false then it uses apercentage  0.1 = 10% of Gold user have instead of all
 		}
 	},
 
@@ -66,10 +66,10 @@ Config = {
 
 	DropOnRespawn   = {
 		AllMoney       = false,
-		PartMoney      = true,
-		PartPercentage = 25,
+		PartMoney      = false,
+		PartPercentage = 0,
 		Gold           = false, -- TRUE ONLY IF UseGoldItem = true
-		Weapons        = true,
+		Weapons        = false,
 		Items          = false
 	},
 
@@ -80,7 +80,14 @@ Config = {
 
 	-- HERE YOU CAN SET THE MAX AMOUNT OF WEAPONS PER JOB (IF YOU WANT)
 	JobsAllowed         = {
-		police = 10 -- job name and max weapons allowed dont allow less than the above
+		sd_police = 10, -- job name and max weapons allowed dont allow less than the above
+		marshall = 10,
+		bw_sheriff = 10,
+		val_sheriff = 10,
+		kve = 10,
+		rho_sheriff = 10,
+		sb_sheriff = 10,
+		an_sheriff = 10
 	},
 
 	-- FIRST JOIN
