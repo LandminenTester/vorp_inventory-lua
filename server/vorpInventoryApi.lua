@@ -1,5 +1,4 @@
----@diagnostic disable: undefined-global
--- it is advised to use the exports and not these events
+---@deprecated
 exports('vorp_inventoryApi', function()
     local INV = {}
 
@@ -17,7 +16,6 @@ exports('vorp_inventoryApi', function()
         return Citizen.Await(query_promise)
     end
 
-    -- * CUSTOM INVENTORY * --
     INV.registerInventory = function(id, name, limit, acceptWeapons, shared, ignoreItemStackLimit, whitelistItems, UsePermissions, UseBlackList, whitelistWeapons)
         local data = {
             id = id,
@@ -29,7 +27,7 @@ exports('vorp_inventoryApi', function()
             whitelistItems = whitelistItems,
             UsePermissions = UsePermissions,
             UseBlackList = UseBlackList,
-            whitelistWeapons = whitelistWeapons
+            whitelistWeapons = whitelistWeapons,
         }
         TriggerEvent("vorpCore:registerInventory", data)
     end

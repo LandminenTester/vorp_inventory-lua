@@ -1,6 +1,8 @@
----@diagnostic disable: undefined-field
----@class InventoryAPI @Inventory API
-InventoryAPI = {}
+local T              = TranslationInv.Langs[Lang]
+local Core           = exports.vorp_core:GetCore()
+
+---@class InventoryAPI
+InventoryAPI         = {}
 
 ---@class CustomInventoryInfos @Custom Inventory Infos
 ---@field id string
@@ -13,11 +15,14 @@ InventoryAPI = {}
 ---@field ignoreItemStackLimit boolean
 ---@field PermissionTakeFrom table<string, integer>
 ---@field PermissionMoveTo table<string, integer>
+---@field CharIdPermissionTakeFrom table<number, boolean>
+---@field CharIdPermissionMoveTo table<number, boolean>
 ---@field UsePermissions boolean
 ---@field UseBlackList boolean
 ---@field BlackListItems table<string, string>
 ---@field whitelistWeapons boolean
 ---@field limitedWeapons table<string, integer>
+---@field webhook string | boolean
 CustomInventoryInfos = {
 	default = {
 		id = "default",
@@ -29,23 +34,25 @@ CustomInventoryInfos = {
 		whitelistItems = false,
 		PermissionTakeFrom = {},
 		PermissionMoveTo = {},
+		CharIdPermissionTakeFrom = {},
+		CharIdPermissionMoveTo = {},
 		UsePermissions = false,
 		UseBlackList = false,
 		BlackListItems = {},
 		whitelistWeapons = false,
-		limitedWeapons = {}
+		limitedWeapons = {},
+		webook = false,
 		--TODO: Add parameter to use contaner with weight
 	}
 }
 
 ---@type table<string,function> table of Registered items
 UsableItemsFunctions = {}
-PlayerItemsLimit = {}
-CoolDownStarted = {}
-allplayersammo = {}
-
+PlayerItemsLimit     = {}
+CoolDownStarted      = {}
+AmmoData             = {}
 ---@type table<string, table<number, table<number, Item>>> contain users inventory items
-UsersInventories = { default = {} }
+UsersInventories     = { default = {} }
 
 --- sync or async helper
 local function respond(cb, result)
@@ -55,34 +62,28 @@ local function respond(cb, result)
 	return result
 end
 
-
---- check can carry item or weapon in inventory
----@param player number source
----@param amount number amount of items
----@param cb fun(canCarry: boolean)? async or sync callback
+---private function to check if item exist
 function InventoryAPI.canCarryAmountItem(player, amount, cb)
 	local _source = player
-	local sourceCharacter = Core.getUser(_source).getUsedCharacter
-	local identifier = sourceCharacter.identifier
-	local charid = sourceCharacter.charIdentifier
-	local limit = sourceCharacter.invCapacity
-	local userInventory = UsersInventories.default[identifier]
+	local character = Core.getUser(_source)
+	if not character then return respond(cb, false) end
+	character = character.getUsedCharacter
+	local userInventory = UsersInventories.default[character.identifier]
 
 	if not userInventory then
 		return respond(cb, false)
 	end
+
 	local function cancarryammount()
-		local totalAmount = InventoryAPI.getUserTotalCountItems(identifier, charid)
-		local totalAmountWeapons = InventoryAPI.getUserTotalCountWeapons(identifier, charid, true)
-		return limit ~= -1 and totalAmount + totalAmountWeapons <= limit
+		local totalAmount = InventoryAPI.getUserTotalCountItems(character.identifier, character.charIdentifier)
+		local totalAmountWeapons = InventoryAPI.getUserTotalCountWeapons(character.identifier, character.charIdentifier, true)
+		return character.invCapacity ~= -1 and totalAmount + totalAmountWeapons <= character.invCapacity
 	end
 
-	local canCarry = cancarryammount()
-	return respond(cb, canCarry)
+	return respond(cb, cancarryammount())
 end
 
 exports("canCarryItems", InventoryAPI.canCarryAmountItem)
-
 
 ---check limit of item
 ---@param target number source
@@ -112,7 +113,6 @@ function InventoryAPI.canCarryItem(target, itemName, amount, cb)
 	end
 
 	local character = user.getUsedCharacter
-	local invLimit = character.invCapacity
 	local svItem = ServerItems[itemName]
 	local canCarry = false
 
@@ -121,7 +121,7 @@ function InventoryAPI.canCarryItem(target, itemName, amount, cb)
 	end
 
 	if svItem.limit ~= -1 and not exceedsItemLimit(character.identifier, svItem.limit) then
-		canCarry = not exceedsInvLimit(character.identifier, character.charIdentifier, invLimit, svItem.weight)
+		canCarry = not exceedsInvLimit(character.identifier, character.charIdentifier, character.invCapacity, svItem.weight)
 	elseif svItem.limit == -1 then
 		canCarry = true
 	end
@@ -361,8 +361,9 @@ exports("getItemMatchingMetadata", InventoryAPI.getItemMatchingMetadata)
 ---@param name string item name
 ---@param amount number
 ---@param metadata table metadata
+---@param allow boolean? allow to detect item creation false means allow true meand dont allow
 ---@param cb fun(success: boolean)? async or sync callback
-function InventoryAPI.addItem(player, name, amount, metadata, cb)
+function InventoryAPI.addItem(player, name, amount, metadata, cb, allow)
 	local _source = player
 	local svItem = ServerItems[name]
 
@@ -403,7 +404,7 @@ function InventoryAPI.addItem(player, name, amount, metadata, cb)
 		return respond(cb, true)
 	end
 
-	DBService.CreateItem(charIdentifier, svItem:getId(), amount, metadata, function(craftedItem)
+	DBService.CreateItem(charIdentifier, svItem:getId(), amount, metadata, name, function(craftedItem)
 		item = Item:New({
 			id = craftedItem.id,
 			count = amount,
@@ -421,6 +422,9 @@ function InventoryAPI.addItem(player, name, amount, metadata, cb)
 		})
 		userInventory[craftedItem.id] = item
 		TriggerClientEvent("vorpCoreClient:addItem", _source, item)
+		if not allow then
+			TriggerEvent("vorp_inventory:Server:OnItemCreated", item, _source)
+		end
 	end)
 
 	return respond(cb, true)
@@ -475,8 +479,9 @@ exports("getItemByMainId", InventoryAPI.getItemByMainId)
 ---@param player number source
 ---@param id number item id
 ---@param cb fun(success: boolean)? async or sync callback
+---@param allow boolean? allow to detect item removal false means allow true meand dont allow
 ---@return fun(success: boolean)
-function InventoryAPI.subItemID(player, id, cb)
+function InventoryAPI.subItemID(player, id, cb, allow)
 	local _source = player
 	local sourceCharacter = Core.getUser(_source)
 
@@ -510,6 +515,11 @@ function InventoryAPI.subItemID(player, id, cb)
 	else
 		DBService.SetItemAmount(charIdentifier, itemid, item:getCount())
 	end
+
+	if not allow then
+		local data = { name = item:getName(), id = item:getId(), metadata = item:getMetadata() }
+		TriggerEvent("vorp_inventory:Server:OnItemRemoved", data, _source)
+	end
 	return respond(cb, true)
 end
 
@@ -522,8 +532,9 @@ exports("subItemID", InventoryAPI.subItemID)
 ---@param amount number amount to sub
 ---@param metadata table metadata
 ---@param cb fun(success: boolean)? async or sync callback
+---@param allow boolean? allow to detect item removal false means allow true meand dont allow
 ---@return boolean
-function InventoryAPI.subItem(player, name, amount, metadata, cb)
+function InventoryAPI.subItem(player, name, amount, metadata, cb, allow)
 	local _source = player
 	local sourceCharacter = Core.getUser(_source)
 
@@ -566,6 +577,11 @@ function InventoryAPI.subItem(player, name, amount, metadata, cb)
 		DBService.DeleteItem(sourceCharacter.charIdentifier, item:getId())
 	else
 		DBService.SetItemAmount(sourceCharacter.charIdentifier, item:getId(), item:getCount())
+	end
+
+	if not allow then
+		local data = { name = item:getName(), id = item:getId(), metadata = item:getMetadata() }
+		TriggerEvent("vorp_inventory:Server:OnItemRemoved", data, _source)
 	end
 
 	return respond(cb, true)
@@ -613,7 +629,7 @@ function InventoryAPI.setItemMetadata(player, itemId, metadata, amount, cb)
 		item:quitCount(amountRemove)
 		DBService.SetItemAmount(charId, item.id, item:getCount())
 		TriggerClientEvent("vorpCoreClient:subItem", _source, item:getId(), item:getCount())
-		DBService.CreateItem(charId, ServerItems[item.name].id, amount or 1, metadata, function(craftedItem)
+		DBService.CreateItem(charId, ServerItems[item.name].id, amountRemove, metadata, item:getName(), function(craftedItem)
 			item = Item:New(
 				{
 					id = craftedItem.id,
@@ -806,14 +822,40 @@ exports("getWeaponBullets", InventoryAPI.getWeaponBullets)
 ---@return boolean
 function InventoryAPI.removeAllUserAmmo(player, cb)
 	local _source = player
-	allplayersammo[_source].ammo = {}
-	TriggerClientEvent("vorpinventory:updateuiammocount", _source, allplayersammo[_source].ammo)
-	TriggerClientEvent("vorpinventory:recammo", _source, allplayersammo[_source])
+	local sourceCharacter = Core.getUser(_source)
+	if not sourceCharacter then
+		return respond(cb, nil)
+	end
+	sourceCharacter = sourceCharacter.getUsedCharacter
+	AmmoData[_source].ammo = {}
+	TriggerClientEvent("vorpinventory:updateuiammocount", _source, AmmoData[_source].ammo)
+	TriggerClientEvent("vorpinventory:recammo", _source, AmmoData[_source])
+	local params = { charId = sourceCharacter.charIdentifier, ammo = json.encode({}) }
+	DBService.updateAsync('UPDATE characters SET ammo = @ammo WHERE charidentifier = @charId', params)
 	return respond(cb, true)
 end
 
 exports("removeAllUserAmmo", InventoryAPI.removeAllUserAmmo)
 
+--- get all user ammo
+---@param player number source
+---@param cb fun(ammo: table)? async or sync callback
+---@return table
+function InventoryAPI.getUserAmmo(player, cb)
+	local _source = player
+	local sourceCharacter = Core.getUser(_source)
+	if not sourceCharacter then
+		return respond(cb, nil)
+	end
+	local ammo = AmmoData[_source].ammo
+	if not ammo then
+		return respond(cb, nil)
+	end
+
+	return respond(cb, ammo)
+end
+
+exports("getUserAmmo", InventoryAPI.getUserAmmo)
 
 --- add bullets to player
 ---@param player number source
@@ -829,7 +871,7 @@ function InventoryAPI.addBullets(player, bulletType, amount, cb)
 	end
 	sourceCharacter = sourceCharacter.getUsedCharacter
 	local charidentifier = sourceCharacter.charIdentifier
-	local ammo = allplayersammo[_source].ammo
+	local ammo = AmmoData[_source].ammo
 
 	if ammo and ammo[bulletType] then
 		ammo[bulletType] = tonumber(ammo[bulletType]) + amount
@@ -837,13 +879,13 @@ function InventoryAPI.addBullets(player, bulletType, amount, cb)
 		ammo[bulletType] = amount
 	end
 
-	allplayersammo[_source].ammo = ammo
-	TriggerClientEvent("vorpinventory:updateuiammocount", _source, allplayersammo[_source].ammo)
+	AmmoData[_source].ammo = ammo
+	TriggerClientEvent("vorpinventory:updateuiammocount", _source, AmmoData[_source].ammo)
 	TriggerClientEvent("vorpCoreClient:addBullets", _source, bulletType, ammo[bulletType])
-	TriggerClientEvent("vorpinventory:recammo", _source, allplayersammo[_source])
+	TriggerClientEvent("vorpinventory:recammo", _source, AmmoData[_source])
 	local query1 = 'UPDATE characters SET ammo = @ammo WHERE charidentifier = @charidentifier'
 	local params1 = { charidentifier = charidentifier, ammo = json.encode(ammo) }
-	DBService.updateAsync(query1, params1, function(r) end)
+	DBService.updateAsync(query1, params1)
 	return respond(cb, true)
 end
 
@@ -870,7 +912,7 @@ function InventoryAPI.subBullets(weaponId, bulletType, amount, cb)
 		if userWeapons:getPropietary() == identifier then
 			userWeapons:subAmmo(bulletType, amount)
 			TriggerClientEvent("vorpCoreClient:subBullets", _source, bulletType, amount)
-			TriggerClientEvent("vorpinventory:updateuiammocount", _source, allplayersammo[_source].ammo)
+			TriggerClientEvent("vorpinventory:updateuiammocount", _source, AmmoData[_source].ammo)
 			return respond(cb, true)
 		end
 	end
@@ -882,8 +924,8 @@ exports("subBullets", InventoryAPI.subBullets)
 --- can carry ammount of weapons
 ---@param player number source
 ---@param amount number amount to check
----@param weaponName string|number? weapon name not neccesary but allows to check if weapon is in the list of not weapons
 ---@param cb fun(success: boolean)?   async or sync callback
+---@param weaponName string|number weapon name not neccesary but allows to check if weapon is in the list of not weapons
 ---@return boolean
 function InventoryAPI.canCarryAmountWeapons(player, amount, cb, weaponName)
 	local _source = player
@@ -892,20 +934,21 @@ function InventoryAPI.canCarryAmountWeapons(player, amount, cb, weaponName)
 	if not sourceCharacter then
 		return respond(cb, false)
 	end
-	-- suport for hash not only names
+
 	local function getWeaponNameFromHash()
 		if weaponName and type(weaponName) == "number" then
-			for name, value in ipairs(SharedData.Weapons) do
+			for _, value in ipairs(SharedData.Weapons) do
 				if joaat(value.HashName) == weaponName then
 					return value.HashName
 				end
 			end
 		end
+		return weaponName
 	end
 
 	weaponName = getWeaponNameFromHash()
 
-	local function isInventryFull(identifier, charId, invCapacity)
+	local function isInventoryFull(identifier, charId, invCapacity)
 		local weaponWeight = SvUtils.GetWeaponWeight(weaponName)
 		local itemsTotalWeight = InventoryAPI.getUserTotalCountItems(identifier, charId)
 		local weaponsTotalWeight = InventoryAPI.getUserTotalCountWeapons(identifier, charId, true)
@@ -923,7 +966,7 @@ function InventoryAPI.canCarryAmountWeapons(player, amount, cb, weaponName)
 	local job = sourceCharacter.job
 	local DefaultAmount = Config.MaxItemsInInventory.Weapons
 
-	if weaponName and isInventryFull(identifier, charId, invCapacity) then
+	if weaponName and isInventoryFull(identifier, charId, invCapacity) then
 		return respond(cb, false)
 	end
 
@@ -960,9 +1003,8 @@ function InventoryAPI.setWeaponCustomLabel(weaponId, label, cb)
 
 	if userWeapons then
 		userWeapons:setCustomLabel(label)
-		DBService.updateAsync('UPDATE loadout SET custom_label = @custom_label WHERE id = @id',
-			{ id = weaponId, custom_label = label }, function(r)
-			end)
+		TriggerClientEvent("vorpInventory:setWeaponCustomLabel", -1, weaponId, label)
+		DBService.updateAsync('UPDATE loadout SET custom_label = @custom_label WHERE id = @id', { id = weaponId, custom_label = label })
 		return respond(cb, true)
 	end
 	return respond(cb, false)
@@ -980,9 +1022,8 @@ function InventoryAPI.setWeaponSerialNumber(weaponId, serial, cb)
 
 	if userWeapons then
 		userWeapons:setSerialNumber(serial)
-		DBService.updateAsync('UPDATE loadout SET serial_number = @serial_number WHERE id = @id',
-			{ id = weaponId, serial_number = serial }, function(r)
-			end)
+		TriggerClientEvent("vorpInventory:setWeaponSerialNumber", -1, weaponId, serial)
+		DBService.updateAsync('UPDATE loadout SET serial_number = @serial_number WHERE id = @id', { id = weaponId, serial_number = serial })
 		return respond(cb, true)
 	end
 	return respond(cb, false)
@@ -997,15 +1038,13 @@ exports("setWeaponSerialNumber", InventoryAPI.setWeaponSerialNumber)
 ---@return boolean
 function InventoryAPI.setWeaponCustomDesc(weaponId, desc, cb)
 	local userWeapons = UsersWeapons.default[weaponId]
-
-	if userWeapons then
-		userWeapons:setCustomDesc(desc)
-		DBService.updateAsync('UPDATE loadout SET custom_desc = @custom_desc WHERE id = @id',
-			{ id = weaponId, custom_desc = desc }, function(r)
-			end)
-		return respond(cb, true)
+	if not userWeapons then
+		return respond(cb, false)
 	end
-	return respond(cb, false)
+	TriggerClientEvent("vorpInventory:setWeaponCustomDesc", -1, weaponId, desc)
+	userWeapons:setCustomDesc(desc)
+	DBService.updateAsync('UPDATE loadout SET custom_desc = @custom_desc WHERE id = @id', { id = weaponId, custom_desc = desc })
+	return respond(cb, true)
 end
 
 exports("setWeaponCustomDesc", InventoryAPI.setWeaponCustomDesc)
@@ -1035,6 +1074,9 @@ exports("getWeaponComponents", InventoryAPI.getcomps)
 ---@return nil | boolean
 function InventoryAPI.deleteWeapon(player, weaponid, cb)
 	local userWeapons = UsersWeapons.default
+	if not userWeapons[weaponid] then
+		return respond(cb, false)
+	end
 	userWeapons[weaponid]:setPropietary('')
 	local query = 'DELETE FROM loadout WHERE id = @id'
 	local params = { id = weaponid }
@@ -1060,27 +1102,26 @@ function InventoryAPI.registerWeapon(_target, wepname, ammos, components, comps,
 	if not targetUser then
 		return respond(cb, nil)
 	end
-	local function isInventryFull(targetIdentifier, targetCharId, targetCharacter)
-		local weaponWeight = SvUtils.GetWeaponWeight(wepname)
-		local itemsTotalWeight = InventoryAPI.getUserTotalCountItems(targetIdentifier, targetCharId)
-		local weaponsTotalWeight = InventoryAPI.getUserTotalCountWeapons(targetIdentifier, targetCharId, true)
-		if (itemsTotalWeight + weaponsTotalWeight + weaponWeight) > targetCharacter.invCapacity then
-			Core.NotifyRightTip(_target, T.cantweapons, 2000)
-			return true
+
+	local function isWeaponInConfig()
+		for index, value in ipairs(SharedData.Weapons) do
+			if value.HashName == wepname:upper() then
+				return true
+			end
 		end
 		return false
+	end
+
+	if not isWeaponInConfig() then
+		return respond(cb, nil)
 	end
 
 	local targetCharacter = targetUser.getUsedCharacter
 	local targetIdentifier = targetCharacter.identifier
 	local targetCharId = targetCharacter.charIdentifier
-	local job = targetCharacter.job
 	local name = wepname:upper()
 	local ammo = {}
 	local component = {}
-	local DefaultAmount = Config.MaxItemsInInventory.Weapons
-
-	local notListed = false
 
 	local _comps = comps or {}
 	local _status = status or { 
@@ -1096,30 +1137,6 @@ function InventoryAPI.registerWeapon(_target, wepname, ammos, components, comps,
 
 	if components and not components.nothing and not comps then
 		_comps = components
-	end
-
-	if Config.JobsAllowed[job] then
-		DefaultAmount = Config.JobsAllowed[job]
-	end
-
-	if DefaultAmount ~= 0 then
-		if name then
-			if SharedUtils.IsValueInArray(name, Config.notweapons) then
-				notListed = true
-			end
-		end
-		-- look for weight
-		if isInventryFull(targetIdentifier, targetCharId, targetCharacter) then
-			return respond(cb, nil)
-		end
-
-		if not notListed then
-			local targetTotalWeaponCount = InventoryAPI.getUserTotalCountWeapons(targetIdentifier, targetCharId) + 1
-			if targetTotalWeaponCount > DefaultAmount then
-				Core.NotifyRightTip(_target, T.cantweapons2, 2000)
-				return respond(cb, nil)
-			end
-		end
 	end
 
 	if ammos then
@@ -1379,29 +1396,29 @@ function InventoryAPI.registerInventory(data)
 	if CustomInventoryInfos[data.id] then
 		return
 	end
-
 	local newInventory = CustomInventoryAPI:New(data)
 	newInventory:Register()
+	return newInventory
 end
 
 exports("registerInventory", InventoryAPI.registerInventory)
 
-local function canContinue(id)
-    if not CustomInventoryInfos[id] then
-        return false
-    end
+local function canContinue(id, jobName, grade, charid)
+	if not CustomInventoryInfos[id] then
+		return false
+	end
 
     if not CustomInventoryInfos[id]:isPermEnabled() then
         return false
     end
 
-    -- if not jobName and not grade then -- best code block for outsider xd
-    --     return false
-    -- end
-    return true
-end
+	if not jobName and not grade and not charid then
+		return false
+	end
 
---- add permissions to move items to custom inventory
+	return true
+end
+--- *add permissions to move items to custom inventory by jobs or an charids
 ---@param id string inventory id
 ---@param jobName string job name
 ---@param grade number job grade
@@ -1415,7 +1432,7 @@ end
 
 exports("AddPermissionMoveToCustom", InventoryAPI.AddPermissionMoveToCustom)
 
---- * add permissions to take items from custom inventory
+--- * add permissions to take items from custom inventory by jobs or an charids
 ---@param id string inventory id
 ---@param jobName string job name
 ---@param grade number job grade
@@ -1429,6 +1446,38 @@ function InventoryAPI.AddPermissionTakeFromCustom(id, jobName, grade)
 end
 
 exports("AddPermissionTakeFromCustom", InventoryAPI.AddPermissionTakeFromCustom)
+
+
+
+--- * add permissions to move items to custom inventory by char ids the state allows to remove or update temp permissions like false or true
+---@param id string inventory id
+---@param charid string charid
+---@param state boolean | nil
+function InventoryAPI.AddCharIdPermissionMoveToCustom(id, charid, state)
+	if canContinue(id, false, false, charid) then
+		return
+	end
+
+	local data = { name = charid, state = state }
+	CustomInventoryInfos[id]:AddCharIdPermissionMoveTo(data)
+end
+
+exports("AddCharIdPermissionMoveToCustom", InventoryAPI.AddCharIdPermissionMoveToCustom)
+
+--- * add permissions to take items from custom inventory by char ids the state allows to remove or update temp permissions like false or true
+---@param id string inventory id
+---@param charid string charid
+---@param state boolean | nil
+function InventoryAPI.AddCharIdPermissionTakeFromCustom(id, charid, state)
+	if canContinue(id, false, false, charid) then
+		return
+	end
+
+	local data = { charid = charid, state = state }
+	CustomInventoryInfos[id]:AddCharIdPermissionTakeFrom(data)
+end
+
+exports("AddCharIdPermissionTakeFromCustom", InventoryAPI.AddCharIdPermissionTakeFromCustom)
 
 --- Black list weapons or items
 ---@param id string inventory id
@@ -1607,7 +1656,7 @@ exports("openInventory", InventoryAPI.openInventory)
 
 ---close  inventory
 ---@param source number
----@param id string
+---@param id? string
 function InventoryAPI.closeInventory(source, id)
 	local _source = source
 	if id and CustomInventoryInfos[id] then
@@ -1670,7 +1719,10 @@ function InventoryAPI.openPlayerInventory(data, callback)
 	local title = data.title
 	local target = data.target
 	local source = data.source
-	local charid = Core.getUser(target).getUsedCharacter.charIdentifier
+	local _target = Core.getUser(target)
+	if not _target then return false end
+	InventoryAPI.closeInventory(target)
+	local charid = _target.getUsedCharacter.charIdentifier
 
 	PlayerBlackListedItems = data.blacklist or {}
 
@@ -1723,3 +1775,141 @@ function InventoryAPI.openPlayerInventory(data, callback)
 end
 
 exports("openPlayerInventory", InventoryAPI.openPlayerInventory)
+
+local function getTotalAmmountInCustomInventory(id, amount)
+	local currentWeaponsAmount = DBService.GetTotalWeaponsInCustomInventory(id)
+	local currentItemsAmount = DBService.GetTotalItemsInCustomInventory(id)
+	local total = amount + currentWeaponsAmount + currentItemsAmount
+	return total
+end
+
+-- add items to custom inventory
+---@param id string inventory id
+---@param items table items
+---@param charid number charidentifier of the owner of the storage if custom inv is not shared , if its shared can be any characteridentifer
+---@param callback fun(success: boolean)? async or sync callback
+function InventoryAPI.addItemsToCustomInventory(id, items, charid, callback)
+	if not CustomInventoryInfos[id] then
+		return respond(callback, false)
+	end
+
+	if not charid or charid == 0 then
+		local msg = "InventoryAPI.addItemsToCustomInventory: charid is not valid %s"
+		print((msg):format(id))
+		return respond(callback, false)
+	end
+
+	if type(items) ~= "table" then
+		print("InventoryAPI.addItemsToCustomInventory: items must be a table")
+		return respond(callback, false)
+	end
+
+	local totalAmount = 0
+	for index, value in ipairs(items) do
+		local item = ServerItems[value.name]
+		if not item then
+			print(("item %s dont exist, this request was cancelled make sure to add the items to database items table"):format(value.name))
+			return respond(callback, false)
+		end
+		totalAmount = totalAmount + value.amount
+	end
+
+	local total = getTotalAmmountInCustomInventory(id, totalAmount)
+	if total > CustomInventoryInfos[id]:getLimit() then
+		print("InventoryAPI.addItemsToCustomInventory: total amount is greater than inventory limit, cannot add items to this inv")
+		return respond(callback, false)
+	end
+
+	InventoryService.addItemsToCustomInventory(id, items, charid)
+
+	return respond(callback, true)
+end
+
+exports("addItemsToCustomInventory", InventoryAPI.addItemsToCustomInventory)
+
+-- add weapons to custom inventory
+---@param id string inventory id
+---@param weapons table weapons
+---@param charid number charidentifier of the owner of the storage if custom inv is not shared , if its shared can be any characteridentifer
+---@param callback fun(success: boolean)? async or sync callback
+function InventoryAPI.addWeaponsToCustomInventory(id, weapons, charid, callback)
+	if not CustomInventoryInfos[id] then
+		return respond(callback, false)
+	end
+
+	--is this inv allowed to add weapons ?
+	if not CustomInventoryInfos[id]:doesAcceptWeapons() then
+		print("InventoryAPI.addWeaponsToCustomInventory: this inventory does not accept weapons, change the settings in the registerCustomInventory export")
+		--return respond(callback, false)
+	end
+
+	if not charid or charid == 0 then
+		local msg = "InventoryAPI.addWeaponsToCustomInventory: charid is not valid %s"
+		print((msg):format(id))
+		return respond(callback, false)
+	end
+
+	if type(weapons) ~= "table" then
+		print("InventoryAPI.addWeaponsToCustomInventory: weapons must be a table")
+		return respond(callback, false)
+	end
+
+	if getTotalAmmountInCustomInventory(id, #weapons) > CustomInventoryInfos[id]:getLimit() then
+		print("InventoryAPI.addWeaponsToCustomInventory: total amount is greater than inventory limit, cannot add weapons to this inv")
+		return respond(callback, false)
+	end
+
+	InventoryService.addWeaponsToCustomInventory(id, weapons, charid)
+
+	return respond(callback, true)
+end
+
+exports("addWeaponsToCustomInventory", InventoryAPI.addWeaponsToCustomInventory)
+
+function InventoryAPI.GetTotalOfItemInCustomInventory(id, item_name)
+	local result = MySQL.query.await("SELECT SUM(amount) as total_amount FROM character_inventories WHERE inventory_type = @invType AND item_name = @item_name;", { invType = id, item_name = item_name })
+	if result[1] and result[1].total_amount then
+		return result[1].total_amount
+	end
+	return 0
+end
+
+exports('GetTotalOfItemInCustomInventory', InventoryAPI.GetTotalOfItemInCustomInventory)
+
+
+function InventoryAPI.GetTotalOfWeaponInCustomInventory(id, weapon_name)
+	local result = MySQL.query.await("SELECT COUNT(*) as total_count FROM loadout WHERE curr_inv = @invType AND weapon = @weapon_name", { invType = id, weapon_name = weapon_name })
+	if result[1] and result[1].total_count then
+		return result[1].total_count
+	end
+	return 0
+end
+
+exports('GetTotalOfWeaponInCustomInventory', InventoryAPI.GetTotalOfWeaponInCustomInventory)
+
+--EXAMPLES
+--RegisterCommand("test1", function(source, args)
+--	local items = {
+--		{ name = "apple", amount = 1, metadata = { quality = 90 } },
+--		{ name = "coal",  amount = 1 },
+--	}
+--	exports.vorp_inventory:addItemsToCustomInventory("outsider_mailman1", items, 147, function(success)
+--		if success then
+--			print("success")
+--		else
+--			print("failed")
+--		end
+--	end)
+--
+--	local weapons = {
+--		{ name = "WEAPON_REVOLVER_CATTLEMAN" },
+--		--{ name = "WEAPON_REVOLVER_CATTLEMAN" ,custom_label = "test", custom_desc = "test", serial_number = "test" } -- or this way
+--	}
+--	exports.vorp_inventory:addWeaponsToCustomInventory("outsider_mailman1", weapons, 147, function(success)
+--		if success then
+--			print("success")
+--		else
+--			print("failed")
+--		end
+--	end)
+--end, false)
